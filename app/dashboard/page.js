@@ -14,49 +14,27 @@ export default async function Dashboard() {
       <div className="max-w-6xl mx-auto">
         <header className="mb-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-8 w-8 text-emerald-400"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-emerald-400">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
               <path d="M5 12a7 7 0 0 0 14 0" />
               <line x1="12" y1="19" x2="12" y2="22" />
             </svg>
             <h1 className="text-2xl font-bold">Axon Dashboard</h1>
           </div>
-          <a
-            href="/"
-            className="text-sm text-zinc-400 hover:text-white transition-colors"
-          >
-            Home
-          </a>
+          <a href="/" className="text-sm text-zinc-400 hover:text-white transition-colors">Home</a>
         </header>
 
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-4 text-zinc-200">Connected Repositories</h2>
           <div className="space-y-3">
             {repos.map((r) => (
-              <div
-                key={r.id}
-                className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 p-4"
-              >
+              <div key={r.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 p-4">
                 <div>
-                  <p className="font-medium text-white">
-                    {r.owner}/{r.repo}
-                  </p>
+                  <p className="font-medium text-white">{r.owner}/{r.repo}</p>
                   <p className="text-sm text-zinc-500">Owner: {r.owner}</p>
                 </div>
                 <form action={`/api/repos/${r.id}/rescan`} method="POST">
-                  <button
-                    type="submit"
-                    className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
-                  >
+                  <button type="submit" className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500">
                     Force Rescan
                   </button>
                 </form>
@@ -93,14 +71,11 @@ export default async function Dashboard() {
           <h2 className="text-lg font-semibold mb-4 text-zinc-200">Recent Incidents</h2>
           <div className="space-y-3">
             {incidents.map((inc, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-zinc-800 bg-zinc-900 p-4"
-              >
+              <div key={i} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
                 <p className="text-sm text-zinc-300">{inc.incident_id}</p>
                 <p className="text-sm text-zinc-300">{inc.message}</p>
                 <p className="text-xs text-zinc-500 mt-1">{inc.type}</p>
-                <p className="text-xs text-zinc-600 mt-1">{inc.created_at}</p>
+                <p className="text-xs text-zinc-600 mt-1">{inc.created_at ? new Date(inc.created_at).toLocaleString() : '—'}</p>
               </div>
             ))}
           </div>
@@ -108,7 +83,7 @@ export default async function Dashboard() {
 
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-4 text-zinc-200">Dependency Map</h2>
-          <DependencyMap repoId={1} />
+          <DependencyMap repoId={repos[0]?.id} />
         </section>
 
         <section className="mb-8">

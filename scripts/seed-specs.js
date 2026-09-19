@@ -6,7 +6,7 @@ const specs = [
   { name: 'sendgrid', url: 'https://raw.githubusercontent.com/twilio/sendgrid-oai/main/oai.yaml' },
   { name: 'openai', url: 'https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml' },
   { name: 'github', url: 'https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json' },
-  { name: 'mock-payment-api', url: 'https://raw.githubusercontent.com/s-vxch4/mock-payment-api/main/openapi.yaml' },
+  { name: 'supportiq', url: 'https://raw.githubusercontent.com/s-vxch4/supportiq/main/openapi.yaml' },
 ];
 
 async function run() {

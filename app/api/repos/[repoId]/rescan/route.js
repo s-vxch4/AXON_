@@ -1,22 +1,34 @@
-import { db } from '../../../../../lib/db.js';
-import { scanRepository } from '../../../../../lib/scanner.js';
+import { App } from '@octokit/app';
+import { db } from '../../../../lib/db.js';
 
-export async function POST(request, { params }) {
-  const { repoId } = params;
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const installationId = searchParams.get('installation_id');
 
-  await db.query('DELETE FROM scan_cache WHERE repo_id = $1', [repoId]);
-  await db.query('DELETE FROM fix_cache WHERE cache_key LIKE $1', [`${repoId}:%`]);
-
-  const repos = await db.query('SELECT * FROM repositories WHERE id = $1', [repoId]);
-
-  if (repos && repos.length > 0) {
-    const repo = repos[0];
-    try {
-      await scanRepository(repo.owner, repo.repo, repo.installation_id, repoId);
-    } catch (err) {
-      console.error('[rescan] error:', err.message);
-    }
+  if (!installationId) {
+    return Response.json({ error: 'No installation_id provided' }, { status: 400 });
   }
 
-  return Response.json({ ok: true });
+  const app = new App({
+    appId: process.env.GITHUB_APP_ID,
+    privateKey: process.env.GITHUB_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    oauth: {
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    },
+  });
+
+  const octokit = await app.getInstallationOctokit(installationId);
+  const { data: repos } = await octokit.apps.listReposAccessibleToInstallation();
+
+  for (const repo of repos.repositories) {
+    await db.query(
+      `INSERT INTO repositories (owner, repo, installation_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT DO NOTHING`,
+      [repo.owner.login, repo.name, String(installationId)]
+    );
+  }
+
+  return Response.redirect(new URL('/dashboard', request.url));
 }

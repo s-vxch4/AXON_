@@ -1,45 +1,43 @@
+import db from '../../../../lib/db.js';
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-import { db } from '../../../../lib/db.js';
-
-export async function GET(request, { params }) {
+export async function GET(req, { params }) {
   const { incidentId } = params;
 
   const encoder = new TextEncoder();
+  let lastId = 0;
 
   const stream = new ReadableStream({
-    async start(controller) {
-      let lastId = 0;
-      let closed = false;
-
-      while (!closed) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
+    start(controller) {
+      const interval = setInterval(async () => {
         try {
-          const rows = await db.query(
+          const result = await db.query(
             'SELECT * FROM incident_logs WHERE incident_id = $1 AND id > $2 ORDER BY id ASC',
             [incidentId, lastId]
           );
+          const rows = result?.rows ?? [];
 
           for (const row of rows) {
-            const data = `data: ${JSON.stringify(row)}\n\n`;
-            controller.enqueue(encoder.encode(data));
             lastId = row.id;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(row)}\n\n`));
+          }
 
-            if (
+          const isDone = rows.some(
+            (row) =>
               (row.type === 'success' && row.message.includes('Incident closed')) ||
               row.type === 'error'
-            ) {
-              closed = true;
-            }
+          );
+          if (isDone) {
+            clearInterval(interval);
+            controller.close();
           }
-        } catch (err) {
-          console.error('[stream] error:', err.message);
+        } catch {
+          clearInterval(interval);
+          controller.close();
         }
-      }
-
-      controller.close();
+      }, 500);
     },
   });
 

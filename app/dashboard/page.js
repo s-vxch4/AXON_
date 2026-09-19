@@ -1,25 +1,13 @@
+import db from '../../lib/db.js';
 import IncidentLog from './IncidentLog.jsx';
 import DependencyMap from './DependencyMap.jsx';
 
 export const dynamic = 'force-dynamic';
 
-export default function Dashboard() {
-  const repos = [
-    { id: 1, owner: 's-vxch4', repo: 'demo-customer-app-axon' },
-  ];
-
-  const apis = [
-    { api_name: 'stripe', last_checked: '—' },
-    { api_name: 'twilio', last_checked: '—' },
-    { api_name: 'sendgrid', last_checked: '—' },
-    { api_name: 'openai', last_checked: '—' },
-    { api_name: 'github', last_checked: '—' },
-    { api_name: 'mock-payment-api', last_checked: '—' },
-  ];
-
-  const incidents = [
-    { id: '—', api_name: '—', status: 'No incidents yet', created_at: '—' },
-  ];
+export default async function Dashboard() {
+  const repos = (await db.query('SELECT * FROM repositories ORDER BY created_at DESC'))?.rows ?? [];
+  const apis = (await db.query('SELECT * FROM api_specs ORDER BY last_checked DESC'))?.rows ?? [];
+  const incidents = (await db.query('SELECT DISTINCT ON (incident_id) incident_id, message, type, created_at FROM incident_logs ORDER BY incident_id, created_at DESC'))?.rows ?? [];
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white p-8">
@@ -91,7 +79,9 @@ export default function Dashboard() {
                 {apis.map((a) => (
                   <tr key={a.api_name} className="border-b border-zinc-800/50 last:border-0">
                     <td className="px-4 py-3 font-mono text-emerald-400">{a.api_name}</td>
-                    <td className="px-4 py-3 text-zinc-400">{a.last_checked}</td>
+                    <td className="px-4 py-3 text-zinc-400">
+                      {a.last_checked ? new Date(a.last_checked).toLocaleString() : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -107,7 +97,9 @@ export default function Dashboard() {
                 key={i}
                 className="rounded-lg border border-zinc-800 bg-zinc-900 p-4"
               >
-                <p className="text-sm text-zinc-300">{inc.status}</p>
+                <p className="text-sm text-zinc-300">{inc.incident_id}</p>
+                <p className="text-sm text-zinc-300">{inc.message}</p>
+                <p className="text-xs text-zinc-500 mt-1">{inc.type}</p>
                 <p className="text-xs text-zinc-600 mt-1">{inc.created_at}</p>
               </div>
             ))}

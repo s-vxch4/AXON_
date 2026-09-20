@@ -2,29 +2,42 @@
 
 import { useEffect, useState } from 'react';
 
-export default function DependencyMap({ repoId }) {
+// FIX: Accept a refreshKey prop. When the parent increments it (after a
+// successful Force Rescan), the useEffect re-runs and re-fetches the latest
+// dependency_map rows — no full page reload needed.
+export default function DependencyMap({ repoId, refreshKey = 0 }) {
   const [dependencies, setDependencies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!repoId) return;
+    if (!repoId) {
+      setLoading(false);
+      return;
+    }
 
     let active = true;
+    setLoading(true);
+    setError(null);
+
+    console.log(`[DependencyMap] Fetching dependencies for repoId=${repoId} (refreshKey=${refreshKey})`);
 
     fetch(`/api/repos/${repoId}/dependencies`)
       .then((res) => {
-        if (!res.ok) throw new Error('Failed to load dependencies');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then((data) => {
         if (active) {
-          setDependencies(data.dependencies || []);
+          const deps = data.dependencies || [];
+          console.log(`[DependencyMap] Loaded ${deps.length} dependency row(s) for repoId=${repoId}`);
+          setDependencies(deps);
           setLoading(false);
         }
       })
       .catch((err) => {
         if (active) {
+          console.error(`[DependencyMap] Fetch error: ${err.message}`);
           setError(err.message);
           setLoading(false);
         }
@@ -33,18 +46,20 @@ export default function DependencyMap({ repoId }) {
     return () => {
       active = false;
     };
-  }, [repoId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repoId, refreshKey]);
 
   const grouped = {};
   for (const dep of dependencies) {
-    if (!grouped[dep.api_name]) grouped[dep.api_name] = [];
-    grouped[dep.api_name].push(dep);
+    const key = dep.api_name || 'unknown';
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(dep);
   }
 
   if (loading) {
     return (
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-500">
-        Loading dependencies...
+        Loading dependencies…
       </div>
     );
   }
@@ -52,7 +67,7 @@ export default function DependencyMap({ repoId }) {
   if (error) {
     return (
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-sm text-red-400">
-        {error}
+        Error loading dependencies: {error}
       </div>
     );
   }
@@ -60,13 +75,14 @@ export default function DependencyMap({ repoId }) {
   if (dependencies.length === 0) {
     return (
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-500">
-        No dependencies found. Run a rescan to populate.
+        No dependencies found. Click Force Rescan to populate.
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-zinc-500">{dependencies.length} total row(s) in dependency_map</p>
       {Object.entries(grouped).map(([apiName, deps]) => (
         <div key={apiName}>
           <div className="mb-2 flex items-center gap-2">

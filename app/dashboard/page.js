@@ -1,13 +1,21 @@
 import db from '../../lib/db.js';
-import IncidentLog from './IncidentLog.jsx';
-import DependencyMap from './DependencyMap.jsx';
+import DashboardClient from './DashboardClient.jsx';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
-  const repos = (await db.query('SELECT * FROM repositories ORDER BY created_at DESC'))?.rows ?? [];
-  const apis = (await db.query('SELECT * FROM api_specs ORDER BY last_checked DESC'))?.rows ?? [];
-  const incidents = (await db.query('SELECT DISTINCT ON (incident_id) incident_id, message, type, created_at FROM incident_logs ORDER BY incident_id, created_at DESC'))?.rows ?? [];
+  const repos     = (await db.query('SELECT * FROM repositories ORDER BY created_at DESC'))?.rows ?? [];
+  const apis      = (await db.query('SELECT * FROM api_specs ORDER BY last_checked DESC'))?.rows ?? [];
+  const incidents = (await db.query(
+    `SELECT DISTINCT ON (incident_id) incident_id, message, type, created_at
+     FROM incident_logs
+     ORDER BY incident_id, created_at DESC`
+  ))?.rows ?? [];
+
+  // Sort incidents newest-first for display
+  const sortedIncidents = [...incidents].sort(
+    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+  );
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white p-8">
@@ -24,24 +32,12 @@ export default async function Dashboard() {
           <a href="/" className="text-sm text-zinc-400 hover:text-white transition-colors">Home</a>
         </header>
 
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-4 text-zinc-200">Connected Repositories</h2>
-          <div className="space-y-3">
-            {repos.map((r) => (
-              <div key={r.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 p-4">
-                <div>
-                  <p className="font-medium text-white">{r.owner}/{r.repo}</p>
-                  <p className="text-sm text-zinc-500">Owner: {r.owner}</p>
-                </div>
-                <form action={`/api/repos/${r.id}/rescan`} method="POST">
-                  <button type="submit" className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500">
-                    Force Rescan
-                  </button>
-                </form>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Client shell: owns Force Rescan, DependencyMap refresh, and IncidentLog stream */}
+        <DashboardClient
+          repos={repos}
+          firstRepoId={repos[0]?.id ?? null}
+          incidents={sortedIncidents}
+        />
 
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-4 text-zinc-200">Monitored APIs</h2>
@@ -65,30 +61,6 @@ export default async function Dashboard() {
               </tbody>
             </table>
           </div>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-4 text-zinc-200">Recent Incidents</h2>
-          <div className="space-y-3">
-            {incidents.map((inc, i) => (
-              <div key={i} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
-                <p className="text-sm text-zinc-300">{inc.incident_id}</p>
-                <p className="text-sm text-zinc-300">{inc.message}</p>
-                <p className="text-xs text-zinc-500 mt-1">{inc.type}</p>
-                <p className="text-xs text-zinc-600 mt-1">{inc.created_at ? new Date(inc.created_at).toLocaleString() : '—'}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-4 text-zinc-200">Dependency Map</h2>
-          <DependencyMap repoId={repos[0]?.id} />
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-4 text-zinc-200">Incident Log</h2>
-          <IncidentLog incidentId="demo" />
         </section>
       </div>
     </main>
